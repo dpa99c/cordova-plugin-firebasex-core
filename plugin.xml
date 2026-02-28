@@ -30,6 +30,7 @@
                 <param name="android-package" value="org.apache.cordova.firebasex.FirebasexCorePlugin"/>
                 <param name="onload" value="true"/>
             </feature>
+            <preference name="GradlePluginGoogleServicesEnabled" value="true" />
         </config-file>
 
         <config-file target="AndroidManifest.xml" parent="/*">

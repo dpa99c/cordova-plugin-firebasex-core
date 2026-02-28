@@ -72,11 +72,12 @@ public class FirebasexCorePlugin extends CordovaPlugin {
         applicationContext = cordovaActivity.getApplicationContext();
         cordovaInterface = this.cordova;
 
+        Log.d(TAG, "Starting Firebasex Core plugin");
+        FirebaseApp.initializeApp(applicationContext);
+
         this.cordova.getThreadPool().execute(new Runnable() {
             public void run() {
                 try {
-                    Log.d(TAG, "Starting Firebasex Core plugin");
-                    FirebaseApp.initializeApp(applicationContext);
                     pluginInitialized = true;
                     if (onPageFinished) {
                         executePendingGlobalJavascript();
