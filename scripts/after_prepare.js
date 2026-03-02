@@ -1,5 +1,29 @@
 #!/usr/bin/env node
 
+/**
+ * @file after_prepare.js
+ * @brief Cordova "after_prepare" hook for the cordova-plugin-firebasex-core plugin.
+ *
+ * Runs after each `cordova prepare` to configure Firebase for both Android and iOS platforms:
+ *
+ * **Android:**
+ * - Copies `google-services.json` to the correct platform location.
+ * - Validates the file contains a Web Client ID (client_type: 3) required by Credential Manager.
+ * - Copies/creates `colors.xml` with the notification accent colour from plugin variables.
+ * - Adds the `tools` XML namespace to `AndroidManifest.xml` if missing.
+ *
+ * **iOS:**
+ * - Copies `GoogleService-Info.plist` to the correct platform location.
+ * - Validates the plist contains a `REVERSED_CLIENT_ID` entry required for Google Sign-In.
+ * - Ensures correct `LD_RUNPATH_SEARCH_PATHS` in the Xcode project.
+ * - Applies a `post_install` block to the Podfile (debug format / deployment target / code signing).
+ * - Writes plugin variable values into the app and Google plists.
+ * - Adds the encoded Google App ID as a URL scheme.
+ * - Overrides Firebase SDK pod versions if `IOS_FIREBASE_SDK_VERSION` is set.
+ * - Runs `pod install --repo-update` if the Podfile was modified.
+ *
+ * @module scripts/after_prepare
+ */
 'use strict';
 
 var fs = require('fs');
@@ -7,15 +31,31 @@ var path = require("path");
 var execSync = require('child_process').execSync;
 var utilities = require("./lib/utilities");
 
+/** @type {string} The application name derived from config.xml. */
 var appName;
+/** @type {Object} Resolved plugin variable key/value pairs. */
 var pluginVariables = {};
 
+/** @constant {string} Root directory of the iOS platform. */
 var IOS_DIR = 'platforms/ios';
+/** @constant {string} Root directory of the Android platform. */
 var ANDROID_DIR = 'platforms/android';
+/** @type {string} The plugin ID extracted from plugin.xml. */
 var PLUGIN_ID;
 
+/**
+ * @type {Object} Platform-specific configuration built by {@link setupEnv}.
+ * Contains paths for key files, plist files, Podfile, colors.xml, and manifest.
+ */
 var PLATFORM;
 
+/**
+ * Initialises the {@link PLATFORM} configuration object with platform-specific paths
+ * derived from the application name and plugin ID.
+ *
+ * Must be called after {@link utilities.setContext} so that `getAppName()` and
+ * `getPluginId()` can resolve their values.
+ */
 var setupEnv = function () {
     appName = utilities.getAppName();
     PLUGIN_ID = utilities.getPluginId();
@@ -51,6 +91,14 @@ var setupEnv = function () {
     };
 };
 
+/**
+ * Cordova hook entry point.
+ *
+ * Sets up the environment, resolves plugin variables, then runs platform-specific
+ * preparation for each platform present in the build.
+ *
+ * @param {object} context - The Cordova hook context.
+ */
 module.exports = function (context) {
     var platforms = context.opts.platforms;
     utilities.setContext(context);
@@ -58,7 +106,7 @@ module.exports = function (context) {
 
     pluginVariables = utilities.parsePluginVariables();
 
-    // Allow override of config file paths
+    // Allow override of config file paths via plugin variables
     if (pluginVariables.ANDROID_FIREBASE_CONFIG_FILEPATH) PLATFORM.ANDROID.src = [pluginVariables.ANDROID_FIREBASE_CONFIG_FILEPATH];
     if (pluginVariables.IOS_FIREBASE_CONFIG_FILEPATH) PLATFORM.IOS.src = [pluginVariables.IOS_FIREBASE_CONFIG_FILEPATH];
 
@@ -67,7 +115,8 @@ module.exports = function (context) {
         utilities.log('Preparing Firebase on Android');
         utilities.copyKey(PLATFORM.ANDROID);
 
-        // Validate google-services.json
+        // Validate google-services.json contains a Web Client ID (client_type: 3)
+        // which is required for Android Credential Manager authentication.
         try {
             var jsonContent = fs.readFileSync(path.resolve(PLATFORM.ANDROID.dest)).toString();
             var json = JSON.parse(jsonContent);
@@ -90,7 +139,8 @@ module.exports = function (context) {
             utilities.warn("Failed to validate google-services.json: " + e.message);
         }
 
-        // Apply colours
+        // Copy colors.xml from the plugin source if it doesn't already exist in the platform.
+        // This file provides the accent colour used in notification icons.
         if (!fs.existsSync(path.resolve(PLATFORM.ANDROID.colorsXml.target))) {
             var colorsXmlSrc = path.resolve(PLATFORM.ANDROID.colorsXml.src);
             if (fs.existsSync(colorsXmlSrc)) {
@@ -98,6 +148,7 @@ module.exports = function (context) {
             }
         }
 
+        // Parse colors.xml and update/add the 'accent' colour entry from plugin variables.
         if (fs.existsSync(path.resolve(PLATFORM.ANDROID.colorsXml.target))) {
             const $colorsXml = utilities.parseXmlFileToJson(PLATFORM.ANDROID.colorsXml.target, { compact: true });
             var accentColor = pluginVariables.ANDROID_ICON_ACCENT,
@@ -142,7 +193,8 @@ module.exports = function (context) {
             }
         }
 
-        // Add tools namespace to manifest
+        // Ensure the `tools` XML namespace is declared in AndroidManifest.xml.
+        // Required for tools:replace and other manifest merge directives.
         if (fs.existsSync(path.resolve(PLATFORM.ANDROID.manifestXml))) {
             const manifestContents = fs.readFileSync(path.resolve(PLATFORM.ANDROID.manifestXml)).toString();
             if (!manifestContents.match('xmlns:tools="http://schemas.android.com/tools"')) {
@@ -157,7 +209,8 @@ module.exports = function (context) {
         utilities.log('Preparing Firebase on iOS');
         utilities.copyKey(PLATFORM.IOS);
 
-        // Validate GoogleService-Info.plist
+        // Validate GoogleService-Info.plist contains REVERSED_CLIENT_ID,
+        // which is required for Google Sign-In on iOS.
         try {
             var plistContent = fs.readFileSync(path.resolve(PLATFORM.IOS.dest)).toString();
             if (plistContent.indexOf("REVERSED_CLIENT_ID") === -1) {
