@@ -23,7 +23,7 @@
     <platform name="android">
         <preference name="ANDROID_FIREBASE_CORE_VERSION" default="21.1.1"/>
         <preference name="ANDROID_FIREBASE_INSTALLATIONS_VERSION" default="18.0.0"/>
-        <preference name="ANDROID_GSON_VERSION" default="2.10.1"/>
+        <preference name="ANDROID_GSON_VERSION" default="2.13.2"/>
 
         <config-file parent="/*" target="res/xml/config.xml">
             <feature name="FirebasexCorePlugin">
