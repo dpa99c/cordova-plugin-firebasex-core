@@ -15,6 +15,8 @@
 @import FirebaseCore;
 @import FirebaseInstallations;
 
+NS_ASSUME_NONNULL_BEGIN
+
 /**
  * Central Cordova plugin class for the modular FirebaseX core module.
  *
@@ -39,7 +41,7 @@
  * @return The initialised @c FirebasexCorePlugin instance, or @c nil if the plugin
  *         has not yet been initialised by Cordova.
  */
-+ (FirebasexCorePlugin *)sharedInstance;
++ (FirebasexCorePlugin * _Nullable)sharedInstance;
 
 #pragma mark - Installations
 
@@ -135,6 +137,16 @@
 - (void)sendPluginSuccess:(CDVInvokedUrlCommand *)command;
 /** Sends an OK result with no data and keeps the callback alive for future invocations. */
 - (void)sendPluginSuccessAndKeepCallback:(NSString *)callbackId;
+/**
+ * Sends an OK result using the specified command delegate, keeping the callback alive.
+ *
+ * Use this variant when the callbackId belongs to a different plugin's command delegate
+ * (e.g. a feature plugin calling into the core helper).
+ *
+ * @param callbackId      The callback ID to send the result to.
+ * @param commandDelegate The @c CDVCommandDelegate that owns the callback.
+ */
+- (void)sendPluginSuccessAndKeepCallback:(NSString *)callbackId command:(id<CDVCommandDelegate>)commandDelegate;
 /** Sends a NO_RESULT status (callback is disposed). */
 - (void)sendPluginNoResult:(CDVInvokedUrlCommand *)command callbackId:(NSString *)callbackId;
 /** Sends a NO_RESULT status and keeps the callback alive. */
@@ -200,3 +212,5 @@
 @property(nonatomic, nullable) id<NSObject> installationIDObserver;
 
 @end
+
+NS_ASSUME_NONNULL_END

@@ -32,11 +32,12 @@ static NSMutableArray<FirebasePluginMessageReceiver *> *receivers;
  *
  * @param notification The notification payload dictionary.
  */
-+ (void)sendNotification:(NSDictionary *)notification {
-    if (receivers == nil) return;
++ (BOOL)sendNotification:(NSDictionary *)notification {
+    if (receivers == nil) return NO;
     for (FirebasePluginMessageReceiver *receiver in receivers) {
         [receiver sendNotification:notification];
     }
+    return YES;
 }
 
 @end

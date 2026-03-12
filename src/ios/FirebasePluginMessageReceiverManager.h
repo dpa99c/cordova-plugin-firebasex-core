@@ -27,7 +27,8 @@
  * Dispatches a notification to all registered receivers.
  *
  * @param notification The notification payload dictionary.
+ * @return @c YES if at least one receiver was registered and dispatched to; @c NO if no receivers are registered.
  */
-+ (void)sendNotification:(NSDictionary *)notification;
++ (BOOL)sendNotification:(NSDictionary *)notification;
 
 @end

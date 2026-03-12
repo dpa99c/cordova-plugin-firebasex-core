@@ -381,6 +381,13 @@ static NSMutableArray *pendingGlobalJS = nil;
     [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
 }
 
+- (void)sendPluginSuccessAndKeepCallback:(NSString *)callbackId command:(id<CDVCommandDelegate>)commandDelegate {
+    CDVPluginResult *pluginResult =
+        [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+    [pluginResult setKeepCallbackAsBool:YES];
+    [commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
+}
+
 - (void)sendPluginNoResult:(CDVInvokedUrlCommand *)command
                 callbackId:(NSString *)callbackId {
     CDVPluginResult *pluginResult =

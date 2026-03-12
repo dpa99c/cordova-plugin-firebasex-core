@@ -11,13 +11,13 @@
 @import UserNotifications;
 
 /** Posted when the app enters the foreground (@c applicationDidBecomeActive:). */
-extern NSString * const FirebasexAppDidBecomeActive;
+extern NSString * _Nonnull const FirebasexAppDidBecomeActive;
 /** Posted when the app enters the background (@c applicationDidEnterBackground:). */
-extern NSString * const FirebasexAppDidEnterBackground;
+extern NSString * _Nonnull const FirebasexAppDidEnterBackground;
 /** Posted after Firebase has been configured in @c didFinishLaunchingWithOptions:. */
-extern NSString * const FirebasexAppDidFinishLaunching;
+extern NSString * _Nonnull const FirebasexAppDidFinishLaunching;
 /** Posted when the app handles an incoming URL (@c handleOpenURL:). */
-extern NSString * const FirebasexHandleOpenURL;
+extern NSString * _Nonnull const FirebasexHandleOpenURL;
 
 /**
  * Category on @c AppDelegate that handles Firebase initialisation and
