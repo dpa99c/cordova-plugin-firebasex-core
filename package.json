@@ -1,6 +1,6 @@
 {
   "name": "cordova-plugin-firebasex-core",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Core Firebase plugin for Cordova - handles Firebase initialization, installations, and shared utilities",
   "cordova": {
     "id": "cordova-plugin-firebasex-core",
