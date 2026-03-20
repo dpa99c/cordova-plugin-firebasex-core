@@ -58,20 +58,4 @@ Android.applyPluginToAppGradle = function(pluginDef){
     utilities.log("Applied plugin to app gradle: " + pluginDef);
 };
 
-/**
- * Appends an arbitrary Gradle configuration block to the app-level build.gradle file.
- * Idempotent: if `marker` is already present in the file the call is a no-op.
- *
- * @param {string} marker   - A unique string used to detect whether the block has already been added.
- * @param {string} content  - The full Gradle content to append.
- */
-Android.appendConfigToAppGradle = function(marker, content){
-    let appGradle = fs.readFileSync(path.resolve(APP_GRADLE_FILEPATH)).toString();
-    if(appGradle.indexOf(marker) !== -1) return;
-
-    appGradle += "\n" + content + "\n";
-    fs.writeFileSync(path.resolve(APP_GRADLE_FILEPATH), appGradle);
-    utilities.log("Appended config to app gradle: " + marker);
-};
-
 module.exports = Android;
