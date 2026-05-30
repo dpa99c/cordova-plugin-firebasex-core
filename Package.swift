@@ -6,7 +6,7 @@ let firebaseSDKVersion: Version = "12.9.0"
 
 let package = Package(
     name: "cordova-plugin-firebasex-core",
-    platforms: [.iOS(.v13)],
+    platforms: [.iOS(.v15)],
     products: [
         .library(
             name: "cordova-plugin-firebasex-core",
@@ -23,7 +23,6 @@ let package = Package(
             dependencies: [
                 .product(name: "Cordova", package: "cordova-ios"),
                 .product(name: "FirebaseCore", package: "firebase-ios-sdk"),
-                .product(name: "FirebaseCoreExtension", package: "firebase-ios-sdk"),
                 .product(name: "FirebaseInstallations", package: "firebase-ios-sdk")
             ],
             path: "src/ios",

@@ -7,7 +7,7 @@
  * app lifecycle transitions without coupling to the core plugin.
  */
 
-#import "AppDelegate.h"
+#import <Cordova/CDVAppDelegate.h>
 @import UserNotifications;
 
 /** Posted when the app enters the foreground (@c applicationDidBecomeActive:). */
@@ -20,13 +20,13 @@ extern NSString * _Nonnull const FirebasexAppDidFinishLaunching;
 extern NSString * _Nonnull const FirebasexHandleOpenURL;
 
 /**
- * Category on @c AppDelegate that handles Firebase initialisation and
+ * Category on @c CDVAppDelegate that handles Firebase initialisation and
  * lifecycle notifications for the modular FirebaseX plugin suite.
  */
-@interface AppDelegate (FirebasexCore) <UIApplicationDelegate>
+@interface CDVAppDelegate (FirebasexCore) <UIApplicationDelegate>
 
-/** Returns the current @c AppDelegate singleton instance. */
-+ (AppDelegate * _Nonnull)instance;
+/** Returns the current @c CDVAppDelegate singleton instance. */
++ (CDVAppDelegate * _Nonnull)instance;
 
 /** @c YES when the application is in the background; @c NO when in the foreground. */
 @property (nonatomic, strong) NSNumber * _Nonnull applicationInBackground;

@@ -10,7 +10,6 @@
  * instance that feature plugins access via @c +sharedInstance.
  */
 
-#import "AppDelegate.h"
 #import <Cordova/CDV.h>
 @import FirebaseCore;
 @import FirebaseInstallations;

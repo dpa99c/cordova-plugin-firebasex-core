@@ -27,13 +27,13 @@ NSString * const FirebasexAppDidFinishLaunching = @"FirebasexAppDidFinishLaunchi
 /** Notification name: app handled an incoming URL. */
 NSString * const FirebasexHandleOpenURL = @"FirebasexHandleOpenURL";
 
-@implementation AppDelegate (FirebasexCore)
+@implementation CDVAppDelegate (FirebasexCore)
 
-/** Singleton reference to the current AppDelegate instance. */
-static AppDelegate *instance;
+/** Singleton reference to the current CDVAppDelegate instance. */
+static CDVAppDelegate *instance;
 
-/** Returns the cached AppDelegate singleton. */
-+ (AppDelegate *)instance {
+/** Returns the cached CDVAppDelegate singleton. */
++ (CDVAppDelegate *)instance {
     return instance;
 }
 
