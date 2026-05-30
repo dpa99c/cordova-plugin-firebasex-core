@@ -52,7 +52,7 @@
     </platform>
 
     <!-- iOS -->
-    <platform name="ios">
+    <platform name="ios" package="swift">
         <preference name="IOS_FIREBASE_SDK_VERSION" default="12.9.0"/>
 
         <config-file parent="/*" target="config.xml">
@@ -69,9 +69,9 @@
                 <source url="https://cdn.cocoapods.org/"/>
             </config>
             <pods use-frameworks="true">
-                <pod name="FirebaseCore" spec="12.9.0"/>
-                <pod name="FirebaseCoreExtension" spec="12.9.0"/>
-                <pod name="FirebaseInstallations" spec="12.9.0"/>
+                <pod name="FirebaseCore" spec="12.9.0" nospm="true"/>
+                <pod name="FirebaseCoreExtension" spec="12.9.0" nospm="true"/>
+                <pod name="FirebaseInstallations" spec="12.9.0" nospm="true"/>
             </pods>
         </podspec>
 

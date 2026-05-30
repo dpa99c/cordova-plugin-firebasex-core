@@ -61,6 +61,88 @@ fs.ensureDirSync = function(dir){
  */
 Utilities.setContext = function(context){
     _context = context;
+    _pluginVariables = null;
+};
+
+/**
+ * Returns the Cordova project root when running inside a hook, otherwise falls back
+ * to the current working directory.
+ *
+ * @returns {string} Absolute project root path.
+ */
+Utilities.getProjectRoot = function(){
+    if(_context && _context.opts && _context.opts.projectRoot){
+        return _context.opts.projectRoot;
+    }
+    return process.cwd();
+};
+
+/**
+ * Returns the root directory for the current plugin.
+ *
+ * Prefers the installed plugin path inside the Cordova project and falls back to
+ * the local repository layout when running directly from the plugin workspace.
+ *
+ * @param {string} [pluginId] - Plugin identifier to resolve.
+ * @returns {string} Absolute plugin root path.
+ */
+Utilities.getPluginRoot = function(pluginId){
+    var resolvedPluginId = pluginId || Utilities.getPluginId();
+    var installedPath = path.join(Utilities.getProjectRoot(), 'plugins', resolvedPluginId);
+    if(fs.existsSync(path.join(installedPath, 'plugin.xml'))){
+        return installedPath;
+    }
+
+    var localPath = path.resolve(__dirname, '..', '..');
+    if(fs.existsSync(path.join(localPath, 'plugin.xml'))){
+        return localPath;
+    }
+
+    return installedPath;
+};
+
+/**
+ * Returns all known Package.swift paths for a plugin.
+ *
+ * Includes the plugin source copy plus any deployed copies under platforms/ios that
+ * declare the same package name.
+ *
+ * @param {string} [pluginId] - Plugin identifier to resolve.
+ * @returns {string[]} Absolute Package.swift paths.
+ */
+Utilities.getPackageSwiftPaths = function(pluginId){
+    var resolvedPluginId = pluginId || Utilities.getPluginId();
+    var packagePaths = [];
+    var seen = {};
+
+    function addIfExists(filePath){
+        if(!filePath || seen[filePath] || !fs.existsSync(filePath)) return;
+        seen[filePath] = true;
+        packagePaths.push(filePath);
+    }
+
+    function collectPackageFiles(rootDir, depth){
+        if(depth < 0 || !fs.existsSync(rootDir) || !fs.statSync(rootDir).isDirectory()) return;
+        fs.readdirSync(rootDir).forEach(function(entry){
+            var entryPath = path.join(rootDir, entry);
+            var stat = fs.statSync(entryPath);
+            if(stat.isDirectory()){
+                collectPackageFiles(entryPath, depth - 1);
+                return;
+            }
+            if(entry === 'Package.swift'){
+                var contents = fs.readFileSync(entryPath, 'utf8');
+                if(contents.indexOf('name: "' + resolvedPluginId + '"') !== -1){
+                    addIfExists(entryPath);
+                }
+            }
+        });
+    }
+
+    addIfExists(path.join(Utilities.getPluginRoot(resolvedPluginId), 'Package.swift'));
+    collectPackageFiles(path.join(Utilities.getProjectRoot(), 'platforms', 'ios'), 4);
+
+    return packagePaths;
 };
 
 /**
@@ -183,10 +265,17 @@ Utilities.getAppName = function(){
         return appNameCordova8Plus;
     }
 
-    // Legacy cordova-ios: use cordova-ios API to resolve the Xcode project directory name
-    const cordova_ios = require('cordova-ios');
-    const iosProject = new cordova_ios('ios', platformPath);
-    return path.basename(iosProject.locations.xcodeCordovaProj);
+    // Legacy cordova-ios: prefer the cordova-ios API when the project is fully initialised,
+    // but fall back to config.xml during early install phases where the iOS project layout
+    // is not yet considered up to date.
+    try {
+        const cordova_ios = require('cordova-ios');
+        const iosProject = new cordova_ios('ios', platformPath);
+        return path.basename(iosProject.locations.xcodeCordovaProj);
+    } catch (error) {
+        console.warn("Unable to resolve legacy iOS project name via cordova-ios; falling back to config.xml: " + error.message);
+        return Utilities.parseConfigXml().widget.name._text.toString().trim();
+    }
 };
 
 /**
@@ -264,6 +353,12 @@ Utilities.parsePluginVariables = function(){
                 pluginVariables[varName] = varValue;
             }
         }
+    }
+
+    if(_context && _context.opts && _context.opts.cli_variables){
+        Object.keys(_context.opts.cli_variables).forEach(function(varName){
+            pluginVariables[varName] = _context.opts.cli_variables[varName];
+        });
     }
 
     _pluginVariables = pluginVariables;

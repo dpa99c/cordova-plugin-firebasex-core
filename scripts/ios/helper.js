@@ -23,8 +23,39 @@ var plist = require('plist');
 var versionRegex = /\d+\.\d+\.\d+[^'"]*/, 
     /** @constant {RegExp} Matches Firebase pod declarations with name and version in Podfile. */
     firebasePodRegex = /pod 'Firebase([^']+)', '(\d+\.\d+\.\d+[^'"]*)'[^\n]*/g,
+    /** @constant {RegExp} Matches the Firebase SPM version token in Package.swift. */
+    firebasePackageVersionRegex = /(let\s+firebaseSDKVersion\s*=\s*")([^"]+)(")/,
     /** @constant {RegExp} Extracts the iOS deployment target version from the Podfile `platform` directive. */
     iosDeploymentTargetPodRegEx = /platform :ios, '(\d+\.\d+\.?\d*)'/;
+
+/**
+ * Rewrites a tokenized Package.swift manifest value in all known plugin copies.
+ *
+ * @param {string} pluginId - Plugin identifier used to locate Package.swift files.
+ * @param {RegExp} tokenRegex - Regex with three capture groups: prefix, current value, suffix.
+ * @param {string} newValue - New value to inject.
+ * @param {string} logLabel - Human readable label for logging.
+ * @returns {boolean} True if any manifest was modified.
+ */
+function rewritePackageManifestValue(pluginId, tokenRegex, newValue, logLabel){
+    var packageSwiftPaths = utilities.getPackageSwiftPaths(pluginId);
+    var modified = false;
+
+    packageSwiftPaths.forEach(function(packageSwiftPath){
+        var contents = fs.readFileSync(packageSwiftPath, 'utf8');
+        var match = contents.match(tokenRegex);
+        if(!match || match[2] === newValue){
+            return;
+        }
+
+        contents = contents.replace(tokenRegex, '$1' + newValue + '$3');
+        fs.writeFileSync(packageSwiftPath, contents);
+        modified = true;
+        utilities.log('Set ' + logLabel + ' to v' + newValue + ' in ' + path.relative(utilities.getProjectRoot(), packageSwiftPath));
+    });
+
+    return modified;
+}
 
 /**
  * Ensures a URL scheme entry exists in an app's Info.plist `CFBundleURLTypes` array.
@@ -78,12 +109,19 @@ module.exports = {
      * @returns {string} Relative path to `project.pbxproj`.
      */
     getXcodeProjectPath: function () {
-        var appName = utilities.getAppName();
-        var oldPath = path.join("platforms", "ios", appName + ".xcodeproj", "project.pbxproj");
         var newPath = path.join("platforms", "ios", "App.xcodeproj", "project.pbxproj");
         if (fs.existsSync(newPath)) {
             return newPath;
         }
+
+        var configAppName = utilities.parseConfigXml().widget.name._text.toString().trim();
+        var legacyPath = path.join("platforms", "ios", configAppName + ".xcodeproj", "project.pbxproj");
+        if (fs.existsSync(legacyPath)) {
+            return legacyPath;
+        }
+
+        var appName = utilities.getAppName();
+        var oldPath = path.join("platforms", "ios", appName + ".xcodeproj", "project.pbxproj");
         return oldPath;
     },
 
@@ -148,7 +186,6 @@ module.exports = {
             podFilePath = path.resolve(iosPlatform.podFile);
 
         if(!fs.existsSync(podFilePath)){
-            utilities.warn('Podfile not found at ' + podFilePath);
             return false;
         }
 
@@ -237,7 +274,6 @@ module.exports = {
     applyPluginVarsToPodfile: function(pluginVariables, iosPlatform){
         var podFilePath = path.resolve(iosPlatform.podFile);
         if(!fs.existsSync(podFilePath)){
-            utilities.warn('Podfile not found at ' + podFilePath);
             return false;
         }
 
@@ -267,6 +303,31 @@ module.exports = {
         }
 
         return podFileModified;
+    },
+
+    /**
+     * Overrides the Firebase SPM dependency version token in every known Package.swift
+     * copy for the current plugin.
+     *
+     * @param {Object} pluginVariables - Resolved plugin variable key/value pairs.
+     * @param {string} pluginId - Plugin identifier used to locate Package.swift files.
+     * @returns {boolean} `true` if any Package.swift file was modified.
+     */
+    applyPluginVarsToPackageManifest: function(pluginVariables, pluginId){
+        if(!pluginVariables['IOS_FIREBASE_SDK_VERSION']){
+            return false;
+        }
+
+        if(!pluginVariables['IOS_FIREBASE_SDK_VERSION'].match(versionRegex)){
+            throw new Error('The value "' + pluginVariables['IOS_FIREBASE_SDK_VERSION'] + '" for IOS_FIREBASE_SDK_VERSION is not a valid semantic version format');
+        }
+
+        return rewritePackageManifestValue(
+            pluginId,
+            firebasePackageVersionRegex,
+            pluginVariables['IOS_FIREBASE_SDK_VERSION'],
+            'Firebase iOS SDK version'
+        );
     },
 
     /**

@@ -156,6 +156,7 @@ module.exports = function (context) {
     if (platforms.indexOf('ios') !== -1 && utilities.directoryExists(IOS_DIR)) {
         utilities.log('Preparing Firebase on iOS');
         utilities.copyKey(PLATFORM.IOS);
+        var useSwiftPackageManager = utilities.isCordovaIOS8Plus(path.join(context.opts.projectRoot, IOS_DIR));
 
         // Validate GoogleService-Info.plist contains REVERSED_CLIENT_ID,
         // which is required for Google Sign-In on iOS.
@@ -175,12 +176,19 @@ module.exports = function (context) {
 
         var helper = require("./ios/helper");
         var xcodeProjectPath = helper.getXcodeProjectPath();
+        var packageManifestModified = false;
         var podFileModified = false;
         helper.ensureRunpathSearchPath(context, xcodeProjectPath);
-        podFileModified = helper.applyPodsPostInstall(pluginVariables, PLATFORM.IOS);
+        if (useSwiftPackageManager) {
+            packageManifestModified = helper.applyPluginVarsToPackageManifest(pluginVariables, PLUGIN_ID);
+        }
         helper.applyPluginVarsToPlists(pluginVariables, PLATFORM.IOS);
         helper.ensureEncodedAppIdInUrlSchemes(PLATFORM.IOS);
-        podFileModified = helper.applyPluginVarsToPodfile(pluginVariables, PLATFORM.IOS) || podFileModified;
+
+        if (!useSwiftPackageManager && fs.existsSync(path.resolve(PLATFORM.IOS.podFile))) {
+            podFileModified = helper.applyPodsPostInstall(pluginVariables, PLATFORM.IOS);
+            podFileModified = helper.applyPluginVarsToPodfile(pluginVariables, PLATFORM.IOS) || podFileModified;
+        }
 
         if (podFileModified) {
             utilities.log('Updating installed Pods');
@@ -188,6 +196,10 @@ module.exports = function (context) {
                 cwd: path.resolve(PLATFORM.IOS.platformDir),
                 encoding: 'utf8'
             });
+        }
+
+        if (packageManifestModified) {
+            utilities.log('Updated Swift package manifest for iOS Firebase dependencies');
         }
     }
 };

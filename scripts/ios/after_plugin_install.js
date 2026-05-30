@@ -5,9 +5,11 @@
  * 1. Ensures the Xcode project has the correct LD_RUNPATH_SEARCH_PATHS build
  *    settings so that embedded frameworks can be found at runtime.
  *
- * 2. Updates the Firebase Core pod versions (FirebaseCore, FirebaseCoreExtension,
- *    FirebaseInstallations) in the Podfile based on the IOS_FIREBASE_SDK_VERSION
- *    plugin variable, allowing users to override the default Firebase SDK version.
+ * 2. Updates the Firebase dependency version token in Package.swift based on the
+ *    IOS_FIREBASE_SDK_VERSION plugin variable.
+ *
+ * 3. If a Podfile is present for a CocoaPods fallback install, keeps the Podfile
+ *    versions in sync as well.
  *
  * Plugin variables are resolved using a 4-layer override strategy:
  * 1. Defaults from plugin.xml preferences (via hook context).
@@ -151,10 +153,15 @@ module.exports = function(context) {
     var pluginVariables = resolvePluginVariables(context);
     var iosPlatformPath = path.join(context.opts.projectRoot, "platforms", "ios");
     var podfilePath = path.join(iosPlatformPath, "Podfile");
+    var useSwiftPackageManager = fs.existsSync(path.join(iosPlatformPath, "App"));
 
-    if (pluginVariables["IOS_FIREBASE_SDK_VERSION"]) {
-        updateFirebasePodVersions(podfilePath, ["FirebaseCore", "FirebaseCoreExtension", "FirebaseInstallations"], pluginVariables["IOS_FIREBASE_SDK_VERSION"]);
+    if (useSwiftPackageManager) {
+        helper.applyPluginVarsToPackageManifest(pluginVariables, PLUGIN_ID);
+        return;
     }
 
-    helper.applyPodsPostInstall(pluginVariables, { podFile: podfilePath });
+    if (pluginVariables["IOS_FIREBASE_SDK_VERSION"] && fs.existsSync(podfilePath)) {
+        updateFirebasePodVersions(podfilePath, ["FirebaseCore", "FirebaseCoreExtension", "FirebaseInstallations"], pluginVariables["IOS_FIREBASE_SDK_VERSION"]);
+        helper.applyPodsPostInstall(pluginVariables, { podFile: podfilePath });
+    }
 };
