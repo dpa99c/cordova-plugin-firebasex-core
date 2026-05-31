@@ -14,6 +14,7 @@
  * **iOS:**
  * - Copies `GoogleService-Info.plist` to the correct platform location.
  * - Validates the plist contains a `REVERSED_CLIENT_ID` entry required for Google Sign-In.
+ * - Ensures `GoogleService-Info.plist` is referenced by the Xcode project resources build phase.
  * - Ensures correct `LD_RUNPATH_SEARCH_PATHS` in the Xcode project.
  * - Applies a `post_install` block to the Podfile (debug format / deployment target / code signing).
  * - Writes plugin variable values into the app and Google plists.
@@ -179,6 +180,7 @@ module.exports = function (context) {
         var packageManifestModified = false;
         var podFileModified = false;
         helper.ensureRunpathSearchPath(context, xcodeProjectPath);
+        helper.ensureGoogleServiceInfoPlistInXcodeProject(PLATFORM.IOS, xcodeProjectPath);
         if (useSwiftPackageManager) {
             packageManifestModified = helper.applyPluginVarsToPackageManifest(pluginVariables, PLUGIN_ID);
         }

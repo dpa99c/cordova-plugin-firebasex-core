@@ -171,6 +171,71 @@ module.exports = {
     },
 
     /**
+     * Ensures GoogleService-Info.plist is added to the Xcode project's resources build phase.
+     *
+     * On cordova-ios 8+, the plist is copied into `App/Resources`, but Cordova does not
+     * always create a matching PBX resource entry for archive builds. This helper repairs
+     * or creates the resource reference so the plist is bundled into the installed app.
+     *
+     * @param {Object} iosPlatform - The iOS platform configuration from {@link PLATFORM}.
+     * @param {string} xcodeProjectPath - Path to the `project.pbxproj` file.
+     * @returns {boolean} `true` if the project was modified.
+     */
+    ensureGoogleServiceInfoPlistInXcodeProject: function(iosPlatform, xcodeProjectPath){
+        var googlePlistPath = path.resolve(iosPlatform.dest);
+        if(!fs.existsSync(googlePlistPath)){
+            utilities.warn('Google plist not found at ' + googlePlistPath);
+            return false;
+        }
+
+        var xcodeProjectFilePath = path.resolve(xcodeProjectPath);
+        var projectContents = fs.readFileSync(xcodeProjectFilePath, 'utf8');
+        var appDirName = path.basename(path.dirname(path.resolve(iosPlatform.appPlist)));
+        var desiredProjectPath = 'GoogleService-Info.plist';
+
+        if(projectContents.indexOf('/* GoogleService-Info.plist in Resources */') !== -1 &&
+           projectContents.indexOf('path = "' + desiredProjectPath + '";') !== -1){
+            return false;
+        }
+
+        var xcodeProject = xcode.project(xcodeProjectPath);
+        xcodeProject.parseSync();
+
+        var appGroupKey = xcodeProject.findPBXGroupKey({name: appDirName}) ||
+            xcodeProject.findPBXGroupKey({path: appDirName});
+        var resourcesGroupKey = xcodeProject.findPBXGroupKey({name: 'Resources'}) ||
+            xcodeProject.findPBXGroupKey({path: 'Resources'});
+        var targetGroupKey = resourcesGroupKey || appGroupKey;
+
+        if(!targetGroupKey){
+            utilities.warn('Unable to find iOS app/resources group in Xcode project; skipping GoogleService-Info.plist inclusion');
+            return false;
+        }
+
+        try {
+            if(appGroupKey){
+                xcodeProject.removeResourceFile('GoogleService-Info.plist', {}, appGroupKey);
+                xcodeProject.removeResourceFile('Resources/GoogleService-Info.plist', {}, appGroupKey);
+            }
+            if(resourcesGroupKey){
+                xcodeProject.removeResourceFile('GoogleService-Info.plist', {}, resourcesGroupKey);
+                xcodeProject.removeResourceFile('Resources/GoogleService-Info.plist', {}, resourcesGroupKey);
+            }
+        } catch (e) {
+            // Ignore removal failures; we still want to add the canonical resource entry below.
+        }
+
+        xcodeProject.addResourceFile(desiredProjectPath, {
+            lastKnownFileType: 'text.plist.xml',
+            fileEncoding: 4
+        }, targetGroupKey);
+
+        fs.writeFileSync(xcodeProjectFilePath, xcodeProject.writeSync());
+        utilities.log('Ensured GoogleService-Info.plist is included in the iOS app bundle');
+        return true;
+    },
+
+    /**
      * Appends a `post_install` block to the Podfile if one does not already exist.
      * The block configures:
      * - `DEBUG_INFORMATION_FORMAT`: Set to `dwarf` if `IOS_STRIP_DEBUG` is true, otherwise `dwarf-with-dsym`.
