@@ -1,3 +1,10 @@
+# Version 2.0.0
+- (ios) feat - BREAKING: Use Swift Package Manager (SPM) for Firebase SDK and other dependencies with `cordova-ios@8+`; continue to use Cocoapods for `cordova-ios@7`.
+- (android) Update pinned Firebase SDK versions to BoM v34.14.0 (May 28, 2026)
+	- https://firebase.google.com/support/release-notes/android#2026-05-28
+- (ios) Update pinned Firebase SDK version to v12.14.0 (May 26, 2026)
+	- https://firebase.google.com/support/release-notes/ios#version_12140_-_may_26_2026	
+
 # Version 1.0.3
 - fix: correct GradlePluginGoogleServicesEnabled target and remove dead code.
 - (android) Remove accent color as it's specific to notifications so belongs in `cordova-plugin-firebasex-messaging`.
