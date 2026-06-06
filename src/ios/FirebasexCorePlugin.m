@@ -43,6 +43,23 @@ static NSMutableArray *pendingGlobalJS = nil;
     return sharedInstance;
 }
 
+- (void)initFirebase {
+    if (![FIRApp defaultApp]) {
+        NSString *filePath = [[NSBundle mainBundle] pathForResource:@"GoogleService-Info" ofType:@"plist"];
+        if (filePath) {
+            [self _logMessage:@"GoogleService-Info.plist found, setup: [FIRApp configureWithOptions]"];
+            FIROptions *options = [[FIROptions alloc] initWithContentsOfFile:filePath];
+            [FIRApp configureWithOptions:options];
+        } else {
+            [self _logError:@"GoogleService-Info.plist NOT FOUND, setup: [FIRApp defaultApp]"];
+            [FIRApp configure];
+        }
+        NSLog(@"Firebase configured successfully");
+    }else{
+        NSLog(@"Firebase already configured, skipping");
+    }
+}
+
 /**
  * Called by Cordova when the plugin is first loaded.
  *

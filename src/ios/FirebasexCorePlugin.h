@@ -42,6 +42,9 @@ NS_ASSUME_NONNULL_BEGIN
  */
 + (FirebasexCorePlugin * _Nullable)sharedInstance;
 
+#pragma mark - Initialisation
+- (void)initFirebase;
+
 #pragma mark - Installations
 
 /** Retrieves the Firebase Installation ID and returns it to the JS callback. */

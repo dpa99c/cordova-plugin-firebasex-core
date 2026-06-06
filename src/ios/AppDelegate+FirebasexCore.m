@@ -92,17 +92,7 @@ static CDVAppDelegate *instance;
     @try {
         instance = self;
 
-        if (![FIRApp defaultApp]) {
-            NSString *filePath = [[NSBundle mainBundle] pathForResource:@"GoogleService-Info" ofType:@"plist"];
-            if (filePath) {
-                [FirebasexCorePlugin.sharedInstance _logMessage:@"GoogleService-Info.plist found, setup: [FIRApp configureWithOptions]"];
-                FIROptions *options = [[FIROptions alloc] initWithContentsOfFile:filePath];
-                [FIRApp configureWithOptions:options];
-            } else {
-                [FirebasexCorePlugin.sharedInstance _logError:@"GoogleService-Info.plist NOT FOUND, setup: [FIRApp defaultApp]"];
-                [FIRApp configure];
-            }
-        }
+        [FirebasexCorePlugin.sharedInstance initFirebase];
 
         self.applicationInBackground = @(YES);
 
