@@ -43,21 +43,29 @@ static NSMutableArray *pendingGlobalJS = nil;
     return sharedInstance;
 }
 
-- (void)initFirebase {
+// Class-level (rather than on sharedInstance) so the swizzled app-delegate launch
+// method can configure Firebase before any plugin instance exists — under the
+// cordova-ios 8 scene lifecycle, plugins are created after
+// application:didFinishLaunchingWithOptions: returns, so sharedInstance is nil there.
++ (void)configureFirebase {
     if (![FIRApp defaultApp]) {
         NSString *filePath = [[NSBundle mainBundle] pathForResource:@"GoogleService-Info" ofType:@"plist"];
         if (filePath) {
-            [self _logMessage:@"GoogleService-Info.plist found, setup: [FIRApp configureWithOptions]"];
+            NSLog(@"%@ LOG: GoogleService-Info.plist found, setup: [FIRApp configureWithOptions]", LOG_TAG);
             FIROptions *options = [[FIROptions alloc] initWithContentsOfFile:filePath];
             [FIRApp configureWithOptions:options];
         } else {
-            [self _logError:@"GoogleService-Info.plist NOT FOUND, setup: [FIRApp defaultApp]"];
+            NSLog(@"%@ ERROR: GoogleService-Info.plist NOT FOUND, setup: [FIRApp defaultApp]", LOG_TAG);
             [FIRApp configure];
         }
         NSLog(@"Firebase configured successfully");
     }else{
         NSLog(@"Firebase already configured, skipping");
     }
+}
+
+- (void)initFirebase {
+    [FirebasexCorePlugin configureFirebase];
 }
 
 /**
@@ -70,6 +78,11 @@ static NSMutableArray *pendingGlobalJS = nil;
 - (void)pluginInitialize {
     NSLog(@"Starting FirebasexCorePlugin");
     sharedInstance = self;
+
+    // Safety net: +configureFirebase is normally called from the swizzled
+    // app-delegate launch method, but configure here too (idempotent) in case
+    // the swizzle did not run (e.g. custom app delegate not derived from CDVAppDelegate).
+    [self initFirebase];
 
     @try {
         preferences = [NSUserDefaults standardUserDefaults];

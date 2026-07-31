@@ -43,6 +43,21 @@ NS_ASSUME_NONNULL_BEGIN
 + (FirebasexCorePlugin * _Nullable)sharedInstance;
 
 #pragma mark - Initialisation
+
+/**
+ * Configures the default Firebase app if it has not already been configured.
+ *
+ * Class-level so it can be called from the swizzled
+ * @c application:didFinishLaunchingWithOptions: before any plugin instance exists:
+ * under the cordova-ios 8 scene-based lifecycle, plugins (including onload plugins)
+ * are created by the scene delegate after the app delegate's launch method returns,
+ * so @c +sharedInstance is still @c nil at that point.
+ *
+ * Idempotent: does nothing if @c [FIRApp defaultApp] is already set.
+ */
++ (void)configureFirebase;
+
+/** Instance convenience wrapper around @c +configureFirebase. */
 - (void)initFirebase;
 
 #pragma mark - Installations

@@ -10,9 +10,9 @@
 #import <Cordova/CDVAppDelegate.h>
 @import UserNotifications;
 
-/** Posted when the app enters the foreground (@c applicationDidBecomeActive:). */
+/** Posted when the app enters the foreground (@c UIApplicationDidBecomeActiveNotification). */
 extern NSString * _Nonnull const FirebasexAppDidBecomeActive;
-/** Posted when the app enters the background (@c applicationDidEnterBackground:). */
+/** Posted when the app enters the background (@c UIApplicationDidEnterBackgroundNotification). */
 extern NSString * _Nonnull const FirebasexAppDidEnterBackground;
 /** Posted after Firebase has been configured in @c didFinishLaunchingWithOptions:. */
 extern NSString * _Nonnull const FirebasexAppDidFinishLaunching;
