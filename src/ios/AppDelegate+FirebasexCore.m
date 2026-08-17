@@ -92,27 +92,50 @@ static CDVAppDelegate *instance;
     @try {
         instance = self;
 
-        [FirebasexCorePlugin.sharedInstance initFirebase];
+        // Configure Firebase via the class method: under the cordova-ios 8 scene
+        // lifecycle, plugins are created after this method returns, so
+        // FirebasexCorePlugin.sharedInstance is still nil here and an instance
+        // call would be silently dropped, leaving Firebase unconfigured.
+        [FirebasexCorePlugin configureFirebase];
 
         self.applicationInBackground = @(YES);
+
+        // UIApplicationDelegate applicationDidBecomeActive:/applicationDidEnterBackground:
+        // are not called under the scene-based lifecycle, so observe the equivalent
+        // notifications, which UIKit posts under both lifecycles.
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(firebasexCoreApplicationDidBecomeActive:)
+                                                     name:UIApplicationDidBecomeActiveNotification
+                                                   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(firebasexCoreApplicationDidEnterBackground:)
+                                                     name:UIApplicationDidEnterBackgroundNotification
+                                                   object:nil];
 
         // Notify other plugins that Firebase has been initialized
         [[NSNotificationCenter defaultCenter] postNotificationName:FirebasexAppDidFinishLaunching object:nil userInfo:launchOptions];
 
     } @catch (NSException *exception) {
-        [FirebasexCorePlugin.sharedInstance handlePluginExceptionWithoutContext:exception];
+        if (FirebasexCorePlugin.sharedInstance != nil) {
+            [FirebasexCorePlugin.sharedInstance handlePluginExceptionWithoutContext:exception];
+        } else {
+            NSLog(@"FirebasexCore[native] ERROR: EXCEPTION during launch: %@", exception.reason);
+        }
     }
 
     return YES;
 }
 
 /**
- * Called when the app enters the foreground.
+ * Called when the app enters the foreground (@c UIApplicationDidBecomeActiveNotification).
+ *
+ * Driven by the notification rather than the @c UIApplicationDelegate callback because
+ * the delegate callbacks are not invoked under the scene-based lifecycle (cordova-ios 8).
  *
  * Updates @c applicationInBackground to @c NO, executes the JS lifecycle callback,
  * and posts @c FirebasexAppDidBecomeActive.
  */
-- (void)applicationDidBecomeActive:(UIApplication *)application {
+- (void)firebasexCoreApplicationDidBecomeActive:(NSNotification *)notification {
     self.applicationInBackground = @(NO);
     @try {
         [FirebasexCorePlugin.sharedInstance _logMessage:@"Enter foreground"];
@@ -124,12 +147,15 @@ static CDVAppDelegate *instance;
 }
 
 /**
- * Called when the app enters the background.
+ * Called when the app enters the background (@c UIApplicationDidEnterBackgroundNotification).
+ *
+ * Driven by the notification rather than the @c UIApplicationDelegate callback because
+ * the delegate callbacks are not invoked under the scene-based lifecycle (cordova-ios 8).
  *
  * Updates @c applicationInBackground to @c YES, executes the JS lifecycle callback,
  * and posts @c FirebasexAppDidEnterBackground.
  */
-- (void)applicationDidEnterBackground:(UIApplication *)application {
+- (void)firebasexCoreApplicationDidEnterBackground:(NSNotification *)notification {
     self.applicationInBackground = @(YES);
     @try {
         [FirebasexCorePlugin.sharedInstance _logMessage:@"Enter background"];
