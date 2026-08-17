@@ -47,8 +47,7 @@
         <source-file src="src/android/FirebasexCorePlugin.java" target-dir="src/org/apache/cordova/firebasex"/>
         <source-file src="src/android/FirebasexEventBus.java" target-dir="src/org/apache/cordova/firebasex"/>
         <source-file src="src/android/FirebasexSharedState.java" target-dir="src/org/apache/cordova/firebasex"/>
-        <source-file src="src/android/FirebasePluginMessageReceiver.java" target-dir="src/org/apache/cordova/firebasex"/>
-        <source-file src="src/android/FirebasePluginMessageReceiverManager.java" target-dir="src/org/apache/cordova/firebasex"/>
+        
     </platform>
 
     <!-- iOS -->
@@ -80,10 +79,6 @@
         <header-file src="src/ios/AppDelegate+FirebasexCore.h"/>
         <source-file src="src/ios/AppDelegate+FirebasexCore.m"/>
         <header-file src="src/ios/FirebasexCoreWrapper.h"/>
-        <header-file src="src/ios/FirebasePluginMessageReceiver.h"/>
-        <source-file src="src/ios/FirebasePluginMessageReceiver.m"/>
-        <header-file src="src/ios/FirebasePluginMessageReceiverManager.h"/>
-        <source-file src="src/ios/FirebasePluginMessageReceiverManager.m"/>
 
         <hook src="scripts/ios/before_plugin_install.js" type="before_plugin_install"/>
         <hook src="scripts/ios/after_plugin_install.js" type="after_plugin_install"/>

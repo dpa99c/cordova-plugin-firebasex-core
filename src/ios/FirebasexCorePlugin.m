@@ -8,7 +8,6 @@
 
 #import "FirebasexCorePlugin.h"
 #import "AppDelegate+FirebasexCore.h"
-#import "FirebasePluginMessageReceiverManager.h"
 #import <Cordova/CDV.h>
 @import FirebaseCore;
 @import FirebaseInstallations;
