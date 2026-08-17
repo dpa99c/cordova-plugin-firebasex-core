@@ -1,3 +1,12 @@
+# Version 2.0.1
+- Move FirebasePluginMessageReceiver from core plugin to messaging plugin.
+	- Resolves [#1](https://github.com/dpa99c/cordova-plugin-firebasex-core/issues/1)
+- fix(ios): configure Firebase before plugin init under cordova-ios 8 scene lifecycle
+	- Resolves [#4](https://github.com/dpa99c/cordova-plugin-firebasex-core/issues/4)
+	- Merged from [PR #5](https://github.com/dpa99c/cordova-plugin-firebasex-core/pull/5)
+- fix: add types field to package.json so TypeScript resolves type definitions
+	- Merged from [PR #3](https://github.com/dpa99c/cordova-plugin-firebasex-core/pull/3)
+
 # Version 2.0.0
 - (ios) feat - BREAKING: Use Swift Package Manager (SPM) for Firebase SDK and other dependencies with `cordova-ios@8+`; continue to use Cocoapods for `cordova-ios@7`.
 - (android) Update pinned Firebase SDK versions to BoM v34.14.0 (May 28, 2026)
