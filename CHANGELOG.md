@@ -1,3 +1,6 @@
+# Version 2.0.2
+- (ios) fix: track foreground and background state for scene-based applications using scene lifecycle notifications while retaining legacy application notifications.
+
 # Version 2.0.1
 - Move FirebasePluginMessageReceiver from core plugin to messaging plugin.
 	- Resolves [#1](https://github.com/dpa99c/cordova-plugin-firebasex-core/issues/1)
