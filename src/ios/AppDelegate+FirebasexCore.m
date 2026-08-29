@@ -5,7 +5,8 @@
  * Uses Objective-C method swizzling to intercept @c application:didFinishLaunchingWithOptions:
  * so Firebase can be configured before any feature plugins initialise. Lifecycle events
  * (foreground, background, URL open) are broadcast as @c NSNotification instances
- * that other modular FirebaseX plugins observe.
+ * that other modular FirebaseX plugins observe. The lifecycle source is selected at
+ * runtime for scene-based and legacy applications.
  */
 
 #import "AppDelegate+FirebasexCore.h"
@@ -13,6 +14,7 @@
 #import "FirebasexCoreWrapper.h"
 #import <objc/runtime.h>
 
+@import UIKit;
 @import UserNotifications;
 
 /** NSUserDefaults key for the associated @c applicationInBackground property. */
@@ -65,6 +67,53 @@ static CDVAppDelegate *instance;
     return objc_getAssociatedObject(self, kApplicationInBackgroundKey);
 }
 
+/** Returns whether the application uses the UIScene lifecycle. */
+- (BOOL)firebasexCoreUsesSceneLifecycle {
+    if (@available(iOS 13.0, *)) {
+        id sceneManifest = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"UIApplicationSceneManifest"];
+        return [sceneManifest isKindOfClass:NSDictionary.class];
+    }
+    return NO;
+}
+
+/** Returns whether at least one scene is currently active. */
+- (BOOL)firebasexCoreHasActiveScene {
+    if (@available(iOS 13.0, *)) {
+        for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+            if (scene.activationState == UISceneActivationStateForegroundActive) {
+                return YES;
+            }
+        }
+    }
+    return NO;
+}
+
+/** Updates lifecycle state and broadcasts only actual state transitions. */
+- (void)firebasexCoreSetApplicationInBackground:(BOOL)applicationInBackground {
+    NSNumber *newValue = @(applicationInBackground);
+    if ([self.applicationInBackground isEqualToNumber:newValue]) {
+        return;
+    }
+
+    self.applicationInBackground = newValue;
+    @try {
+        FirebasexCorePlugin *corePlugin = [FirebasexCorePlugin sharedInstance];
+        NSString *lifecycleMessage = applicationInBackground ? @"Enter background" : @"Enter foreground";
+        NSString *javascriptCallback = applicationInBackground
+            ? @"FirebasexCore._applicationDidEnterBackground()"
+            : @"FirebasexCore._applicationDidBecomeActive()";
+        NSString *notificationName = applicationInBackground
+            ? FirebasexAppDidEnterBackground
+            : FirebasexAppDidBecomeActive;
+
+        [corePlugin _logMessage:lifecycleMessage];
+        [corePlugin executeGlobalJavascript:javascriptCallback];
+        [[NSNotificationCenter defaultCenter] postNotificationName:notificationName object:nil];
+    } @catch (NSException *exception) {
+        [[FirebasexCorePlugin sharedInstance] handlePluginExceptionWithoutContext:exception];
+    }
+}
+
 /**
  * Swizzled version of @c application:didFinishLaunchingWithOptions:.
  *
@@ -100,17 +149,26 @@ static CDVAppDelegate *instance;
 
         self.applicationInBackground = @(YES);
 
-        // UIApplicationDelegate applicationDidBecomeActive:/applicationDidEnterBackground:
-        // are not called under the scene-based lifecycle, so observe the equivalent
-        // notifications, which UIKit posts under both lifecycles.
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(firebasexCoreApplicationDidBecomeActive:)
-                                                     name:UIApplicationDidBecomeActiveNotification
-                                                   object:nil];
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(firebasexCoreApplicationDidEnterBackground:)
-                                                     name:UIApplicationDidEnterBackgroundNotification
-                                                   object:nil];
+        NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];
+        if ([self firebasexCoreUsesSceneLifecycle]) {
+            [notificationCenter addObserver:self
+                                   selector:@selector(firebasexCoreSceneDidBecomeActive:)
+                                       name:UISceneDidActivateNotification
+                                     object:nil];
+            [notificationCenter addObserver:self
+                                   selector:@selector(firebasexCoreSceneDidEnterBackground:)
+                                       name:UISceneDidEnterBackgroundNotification
+                                     object:nil];
+        } else {
+            [notificationCenter addObserver:self
+                                   selector:@selector(firebasexCoreApplicationDidBecomeActive:)
+                                       name:UIApplicationDidBecomeActiveNotification
+                                     object:nil];
+            [notificationCenter addObserver:self
+                                   selector:@selector(firebasexCoreApplicationDidEnterBackground:)
+                                       name:UIApplicationDidEnterBackgroundNotification
+                                     object:nil];
+        }
 
         // Notify other plugins that Firebase has been initialized
         [[NSNotificationCenter defaultCenter] postNotificationName:FirebasexAppDidFinishLaunching object:nil userInfo:launchOptions];
@@ -127,43 +185,39 @@ static CDVAppDelegate *instance;
 }
 
 /**
- * Called when the app enters the foreground (@c UIApplicationDidBecomeActiveNotification).
+ * Called when a legacy application enters the foreground
+ * (@c UIApplicationDidBecomeActiveNotification).
  *
- * Driven by the notification rather than the @c UIApplicationDelegate callback because
- * the delegate callbacks are not invoked under the scene-based lifecycle (cordova-ios 8).
+ * Driven by the notification rather than the @c UIApplicationDelegate callback.
  *
  * Updates @c applicationInBackground to @c NO, executes the JS lifecycle callback,
  * and posts @c FirebasexAppDidBecomeActive.
  */
 - (void)firebasexCoreApplicationDidBecomeActive:(NSNotification *)notification {
-    self.applicationInBackground = @(NO);
-    @try {
-        [FirebasexCorePlugin.sharedInstance _logMessage:@"Enter foreground"];
-        [FirebasexCorePlugin.sharedInstance executeGlobalJavascript:@"FirebasexCore._applicationDidBecomeActive()"];
-        [[NSNotificationCenter defaultCenter] postNotificationName:FirebasexAppDidBecomeActive object:nil];
-    } @catch (NSException *exception) {
-        [FirebasexCorePlugin.sharedInstance handlePluginExceptionWithoutContext:exception];
-    }
+    [self firebasexCoreSetApplicationInBackground:NO];
 }
 
 /**
- * Called when the app enters the background (@c UIApplicationDidEnterBackgroundNotification).
+ * Called when a legacy application enters the background
+ * (@c UIApplicationDidEnterBackgroundNotification).
  *
- * Driven by the notification rather than the @c UIApplicationDelegate callback because
- * the delegate callbacks are not invoked under the scene-based lifecycle (cordova-ios 8).
+ * Driven by the notification rather than the @c UIApplicationDelegate callback.
  *
  * Updates @c applicationInBackground to @c YES, executes the JS lifecycle callback,
  * and posts @c FirebasexAppDidEnterBackground.
  */
 - (void)firebasexCoreApplicationDidEnterBackground:(NSNotification *)notification {
-    self.applicationInBackground = @(YES);
-    @try {
-        [FirebasexCorePlugin.sharedInstance _logMessage:@"Enter background"];
-        [FirebasexCorePlugin.sharedInstance executeGlobalJavascript:@"FirebasexCore._applicationDidEnterBackground()"];
-        [[NSNotificationCenter defaultCenter] postNotificationName:FirebasexAppDidEnterBackground object:nil];
-    } @catch (NSException *exception) {
-        [FirebasexCorePlugin.sharedInstance handlePluginExceptionWithoutContext:exception];
-    }
+    [self firebasexCoreSetApplicationInBackground:YES];
+}
+
+/** Called when a scene becomes active in a scene-based application. */
+- (void)firebasexCoreSceneDidBecomeActive:(NSNotification *)notification {
+    [self firebasexCoreSetApplicationInBackground:NO];
+}
+
+/** Called when a scene enters the background in a scene-based application. */
+- (void)firebasexCoreSceneDidEnterBackground:(NSNotification *)notification {
+    [self firebasexCoreSetApplicationInBackground:![self firebasexCoreHasActiveScene]];
 }
 
 /**
