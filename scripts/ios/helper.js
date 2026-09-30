@@ -24,7 +24,7 @@ var versionRegex = /\d+\.\d+\.\d+[^'"]*/,
     /** @constant {RegExp} Matches Firebase pod declarations with name and version in Podfile. */
     firebasePodRegex = /pod 'Firebase([^']+)', '(\d+\.\d+\.\d+[^'"]*)'[^\n]*/g,
     /** @constant {RegExp} Matches the Firebase SPM version token in Package.swift. */
-    firebasePackageVersionRegex = /(let\s+firebaseSDKVersion\s*=\s*")([^"]+)(")/,
+    firebasePackageVersionRegex = /(let\s+firebaseSDKVersion(?:\s*:\s*Version)?\s*=\s*")([^"]+)(")/,
     /** @constant {RegExp} Extracts the iOS deployment target version from the Podfile `platform` directive. */
     iosDeploymentTargetPodRegEx = /platform :ios, '(\d+\.\d+\.?\d*)'/;
 
