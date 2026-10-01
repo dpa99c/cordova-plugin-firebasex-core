@@ -1,3 +1,6 @@
+# Version 2.0.3
+- (ios) fix: apply `IOS_FIREBASE_SDK_VERSION` to the typed Firebase SPM version declaration in both installed and generated package manifests.
+
 # Version 2.0.2
 - (ios) fix: track foreground and background state for scene-based applications using scene lifecycle notifications while retaining legacy application notifications.
 
