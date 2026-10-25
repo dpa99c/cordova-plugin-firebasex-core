@@ -34,6 +34,9 @@ NSString * const FirebasexHandleOpenURL = @"FirebasexHandleOpenURL";
 /** Singleton reference to the current CDVAppDelegate instance. */
 static CDVAppDelegate *instance;
 
+/** Set once the launch-time setup has run, either from the swizzled launch method or from the fallback. */
+static BOOL launchSetupDone = NO;
+
 /** Returns the cached CDVAppDelegate singleton. */
 + (CDVAppDelegate *)instance {
     return instance;
@@ -138,6 +141,50 @@ static CDVAppDelegate *instance;
     [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"/google/measurement/debug_mode"];
 #endif
 
+    [self firebasexCorePerformLaunchSetupWithOptions:launchOptions];
+
+    return YES;
+}
+
+/**
+ * Ensures the launch-time setup has run even when the swizzled
+ * @c application:didFinishLaunchingWithOptions: was never invoked.
+ *
+ * Observed with cordova-ios 8 (scene lifecycle, Swift @implementation app delegate,
+ * plugins built as Swift packages): the +load swizzle does not take effect, so
+ * @c instance stays nil, no lifecycle observers are registered,
+ * @c applicationInBackground stays nil and @c FirebasexAppDidFinishLaunching is never
+ * posted. Feature plugins then never install their delegates and queued messages are
+ * never flushed. Plugins call this from @c pluginInitialize; it is idempotent.
+ */
+- (void)firebasexCoreEnsureLaunched {
+    if (launchSetupDone) {
+        return;
+    }
+    NSLog(@"FirebasexCore[native] WARN: launch setup did not run from application:didFinishLaunchingWithOptions:, running it from pluginInitialize");
+    [self firebasexCorePerformLaunchSetupWithOptions:nil];
+
+    // The app may already be active at this point (plugins are created when the
+    // scene connects), so derive the current state instead of assuming background.
+    BOOL inBackground;
+    if ([self firebasexCoreUsesSceneLifecycle]) {
+        inBackground = ![self firebasexCoreHasActiveScene];
+    } else {
+        inBackground = [UIApplication sharedApplication].applicationState != UIApplicationStateActive;
+    }
+    self.applicationInBackground = @(inBackground);
+}
+
+/**
+ * The launch-time setup shared by the swizzled launch method and the fallback.
+ * Runs at most once.
+ */
+- (void)firebasexCorePerformLaunchSetupWithOptions:(NSDictionary *)launchOptions {
+    if (launchSetupDone) {
+        return;
+    }
+    launchSetupDone = YES;
+
     @try {
         instance = self;
 
@@ -180,8 +227,6 @@ static CDVAppDelegate *instance;
             NSLog(@"FirebasexCore[native] ERROR: EXCEPTION during launch: %@", exception.reason);
         }
     }
-
-    return YES;
 }
 
 /**

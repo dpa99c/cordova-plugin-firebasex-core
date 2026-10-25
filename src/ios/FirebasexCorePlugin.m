@@ -78,6 +78,13 @@ static NSMutableArray *pendingGlobalJS = nil;
     NSLog(@"Starting FirebasexCorePlugin");
     sharedInstance = self;
 
+    // cordova-ios 8: the +load swizzle of application:didFinishLaunchingWithOptions:
+    // does not take effect, so run the launch setup from here if it has not run yet.
+    id appDelegate = [UIApplication sharedApplication].delegate;
+    if ([appDelegate isKindOfClass:[CDVAppDelegate class]]) {
+        [(CDVAppDelegate *)appDelegate firebasexCoreEnsureLaunched];
+    }
+
     // Safety net: +configureFirebase is normally called from the swizzled
     // app-delegate launch method, but configure here too (idempotent) in case
     // the swizzle did not run (e.g. custom app delegate not derived from CDVAppDelegate).
