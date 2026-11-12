@@ -28,6 +28,12 @@ extern NSString * _Nonnull const FirebasexHandleOpenURL;
 /** Returns the current @c CDVAppDelegate singleton instance. */
 + (CDVAppDelegate * _Nonnull)instance;
 
+/**
+ * Runs the launch-time setup if the swizzled application:didFinishLaunchingWithOptions:
+ * did not (cordova-ios 8). Idempotent; feature plugins call it from pluginInitialize.
+ */
+- (void)firebasexCoreEnsureLaunched;
+
 /** @c YES when the application is in the background; @c NO when in the foreground. */
 @property (nonatomic, strong) NSNumber * _Nonnull applicationInBackground;
 

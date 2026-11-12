@@ -52,7 +52,10 @@ public class FirebasexCorePlugin extends CordovaPlugin {
 
     /** Singleton instance, set during {@link #pluginInitialize()}. */
     protected static FirebasexCorePlugin instance = null;
-    /** Application context, cached for use by feature plugins. */
+    /**
+     * Application context, cached for use by feature plugins. It is the {@code Application}
+     * object, so unlike the activity references below it stays set after {@link #onDestroy()}.
+     */
     protected static Context applicationContext = null;
     /** Reference to the hosting Cordova activity. */
     private static Activity cordovaActivity = null;
@@ -250,13 +253,24 @@ public class FirebasexCorePlugin extends CordovaPlugin {
         // Subclasses or other plugins can override
     }
 
-    /** Cleans up all static references when the plugin is destroyed. */
+    /**
+     * Clears the static references to this instance when the plugin is destroyed.
+     *
+     * <p>A newer activity may already own them: when one {@code MainActivity} replaces another
+     * (a second instance opened from another app's task, {@code FLAG_ACTIVITY_CLEAR_TASK}), Android
+     * runs the old activity's {@code onDestroy()} after the new activity's {@code onCreate()}.
+     * Clearing them then would leave the live page without a core plugin until the process ends.
+     *
+     * <p>{@link #applicationContext} is kept because it does not belong to the activity, and calls
+     * from the page can still arrive on other threads while the activity is being destroyed.
+     */
     @Override
     public void onDestroy() {
-        instance = null;
-        cordovaActivity = null;
-        cordovaInterface = null;
-        applicationContext = null;
+        if (instance == this) {
+            instance = null;
+            cordovaActivity = null;
+            cordovaInterface = null;
+        }
         onReset();
         super.onDestroy();
     }
@@ -426,8 +440,10 @@ public class FirebasexCorePlugin extends CordovaPlugin {
      * @param jsString the JavaScript code to evaluate
      */
     private void doExecuteGlobalJavascript(final String jsString) {
-        if (cordovaActivity == null) return;
-        cordovaActivity.runOnUiThread(new Runnable() {
+        // Read once: onDestroy() can clear the static on the UI thread while a pool thread is here.
+        final Activity activity = cordovaActivity;
+        if (activity == null) return;
+        activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -469,8 +485,10 @@ public class FirebasexCorePlugin extends CordovaPlugin {
         String msg = e.toString();
         Log.e(TAG, msg);
         logExceptionToCrashlyticsIfAvailable(e);
-        if (instance != null) {
-            instance.logErrorToWebview(msg);
+        // Read once: onDestroy() can clear the static on the UI thread while a pool thread is here.
+        final FirebasexCorePlugin plugin = instance;
+        if (plugin != null) {
+            plugin.logErrorToWebview(msg);
         }
     }
 
@@ -606,7 +624,7 @@ public class FirebasexCorePlugin extends CordovaPlugin {
      * @return the boolean value from the manifest
      * @throws Exception if the metadata cannot be read
      */
-    public boolean getMetaDataFromManifest(String name) throws Exception {
+    public static boolean getMetaDataFromManifest(String name) throws Exception {
         return applicationContext.getPackageManager()
             .getApplicationInfo(applicationContext.getPackageName(), PackageManager.GET_META_DATA)
             .metaData.getBoolean(name);
@@ -630,11 +648,13 @@ public class FirebasexCorePlugin extends CordovaPlugin {
     /**
      * Persists a boolean preference to SharedPreferences.
      *
+     * <p>Static for the reason given at {@link #getPreference(String)}.
+     *
      * @param name  the preference key
      * @param value the boolean value to store
      */
-    public void setPreference(String name, boolean value) {
-        SharedPreferences settings = cordovaActivity.getSharedPreferences(SETTINGS_NAME, MODE_PRIVATE);
+    public static void setPreference(String name, boolean value) {
+        SharedPreferences settings = applicationContext.getSharedPreferences(SETTINGS_NAME, MODE_PRIVATE);
         SharedPreferences.Editor editor = settings.edit();
         editor.putBoolean(name, value);
         editor.apply();
@@ -647,13 +667,20 @@ public class FirebasexCorePlugin extends CordovaPlugin {
      * the preference has not been explicitly set. Returns {@code false} if
      * neither source has a value.
      *
+     * <p>Static, and based on the application context instead of the activity, because feature
+     * plugins call this as {@code FirebasexCorePlugin.getInstance().getPreference(name)} on pool
+     * threads, where {@link #getInstance()} is {@code null} once the activity has been destroyed.
+     * Java evaluates and discards the target of a static call, so that expression cannot throw a
+     * NullPointerException. As an instance method it did: crashlytics'
+     * {@code setCrashlyticsCustomKey} calls it outside its try block, which ended the process.
+     *
      * @param name the preference key
      * @return the boolean value
      */
-    public boolean getPreference(String name) {
+    public static boolean getPreference(String name) {
         boolean result;
         try {
-            SharedPreferences settings = cordovaActivity.getSharedPreferences(SETTINGS_NAME, MODE_PRIVATE);
+            SharedPreferences settings = applicationContext.getSharedPreferences(SETTINGS_NAME, MODE_PRIVATE);
             result = settings.getBoolean(name, false);
         } catch (Exception e) {
             try {
